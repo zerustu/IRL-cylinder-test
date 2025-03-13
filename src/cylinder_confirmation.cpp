@@ -301,7 +301,7 @@ void processEntries(const std::string& filename) {
 
         if (i >= last_update + update_step) {
             // Display progress bar
-            displayProgress(i + 1, total);
+            displayProgress(i, total);
             last_update = i;
         }
     }

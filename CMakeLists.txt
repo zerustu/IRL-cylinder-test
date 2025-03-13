@@ -19,6 +19,10 @@ find_package(Eigen3) # Provide -D EIGEN_PATH=/path/to/Eigen
 find_package(CGAL)
 find_package(OpenMP REQUIRED)
 
+if(NOT "${CMAKE_BUILD_TYPE_UC}" MATCHES "DEBUG")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNDEBUG -DNDEBUG_PERF")
+endif()
+
 # Add AMR executable
 add_executable(amr_generation)
 set_target_properties(amr_generation

@@ -608,6 +608,12 @@ int main(int argc, char* argv[]) {
                 }
               }
             }
+            #ifdef VALDEBUG
+            std::cout << "this is the points befor scaling" << std::endl;
+            for (auto& vertex : geometri) {
+                std::cout << vertex << std::endl;
+            }
+            #endif
     
             HalfEdgePolyhedronQuadratic<Pt> half_edge;
             geometri_amr.setHalfEdgeVersion(&half_edge);
