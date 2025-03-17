@@ -168,6 +168,7 @@ int main(int argc, char* argv[]) {
           graded_gen = true;
           Ntests = 9*5*5*5*5*5*5*5;
           re_scale = 0;
+          break;
 
       case 'H': // help
           print_help(argv[0]);
@@ -223,7 +224,7 @@ int main(int argc, char* argv[]) {
 
     int count = 0;
 
-    #pragma omp for nowait
+    #pragma omp for nowait schedule(dynamic)
     for (int i = 0; i < Ntests; i++) {
 
       double b, r, rot_1, rot_2, rot_3, tra_1, tra_2, tra_3;
