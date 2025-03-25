@@ -13,9 +13,12 @@
 #include <getopt.h>
 
 // #define VALDEBUG_S
-// #define VALDEBUG
+// #define DEBUG_CYL_IRL
+
+// SURFACE_DEBUG add log about the cylinder output surface, including:
+// when new arcs are added and the computation of the closed loops
 // #define VALDEBUG2
-#define NUDGE_REGION
+// #define NUDGE_REGION
 
 #include "irl/data_structures/small_vector.h"
 #include "irl/generic_cutting/generic_cutting.h"
@@ -76,8 +79,9 @@ static struct option long_options[] =
         {"bunny",               no_argument, &polyhedron, 5},
         {"no_rescale",              no_argument, &re_scale, 0},
         {"force_rescale",           no_argument, &re_scale, 1},
-        {"AMR_level",           required_argument,       0, 'L'},
-        {"max_AMR_level",       required_argument,       0, 'L'},
+        {"AMR_level",           required_argument,       0, 'l'},
+        {"max_AMR_level",       required_argument,       0, 'l'},
+        {"triangluation_Level", required_argument,       0, 'L'},
         {"file",                required_argument,       0, 'f'},
         {"random_position",     optional_argument,       0, 'r'},
         {"help",                    no_argument,       0,   'H'},
@@ -93,9 +97,10 @@ void print_help(const char* program_name) {
 
     std::cout << "Options:\n";
     std::cout << "  -H, --help                                         Show this help message\n";
-    std::cout << "  -L, --AMR_level <int> / --max_AMR_level <int>      Set the maximum AMR level (default: 10)\n";
+    std::cout << "  -l, --AMR_level <int> / --max_AMR_level <int>      Set the maximum AMR level (default: 10)\n";
     std::cout << "  -f, --file <string>                                Input file path\n";
     std::cout << "  -r, --random_position[=<seed>]                     Generate random coordinates; optional seed\n";
+    std::cout << "  -L, --triangluation_Level                          Set the max distance used for triangulating the output surface (default : 0.1)\n";
     std::cout << "      --no_surface_output                            Disable surface output\n";
     std::cout << "      --first_vertex_on_surface                      Place first vertex on surface\n";
     std::cout << "      --no_rescale                                   Disable rescaling\n";
@@ -111,9 +116,15 @@ void print_help(const char* program_name) {
 }
 
 template <class HalfEdgeType, class SegmentedHalfEdge, class CuttingType>
-void procede_case(Cylinder a_cylinder, CuttingType irl_cutting, SegmentedHalfEdge a_segmented_half_edge, HalfEdgeType a_half_edge, int max_amr_level) {
+void procede_case(Cylinder a_cylinder, CuttingType irl_cutting, SegmentedHalfEdge a_segmented_half_edge, HalfEdgeType a_half_edge, int max_amr_level, float tri_level) {
     using VolumeAndSuface =
         AddSurfaceOutput<VolumeMoments, CylinderParametrizedSurfaceOutput>;
+
+    if (no_surface_output == 0) {
+        std::ofstream file("./full_geometry_test_config.vtu");
+        file << a_segmented_half_edge;
+        file.close();
+    }
 
     auto start = std::chrono::high_resolution_clock::now();
     auto temp_surface_and_moments =
@@ -188,7 +199,7 @@ void procede_case(Cylinder a_cylinder, CuttingType irl_cutting, SegmentedHalfEdg
 
     if (no_surface_output == 0) {
         auto temp_param_surface = temp_surface_and_moments.getSurface();
-        auto temp_tri_surface = temp_param_surface.triangulate(0.1);
+        auto temp_tri_surface = temp_param_surface.triangulate(tri_level);
         temp_tri_surface.write("test_config_surface");
     }
 }
@@ -197,7 +208,7 @@ struct DataEntry {
     double b, r, rotation_1, rotation_2, rotation_3, datum_x, datum_y, datum_z, is_on_surface;
 };
 
-void read_file(char* filepath, int max_amr_level) {
+void read_file(char* filepath, int max_amr_level, float tri_level) {
     std::ifstream file(filepath);
     std::vector<DataEntry> datas;
     std::string line;
@@ -298,7 +309,7 @@ void read_file(char* filepath, int max_amr_level) {
     
             Cylinder cylinder(cyl_datum, frame, aligned_cylinder.b(), aligned_cylinder.r());
     
-            procede_case(cylinder, cube, seg_half_edge, half_edge, max_amr_level);
+            procede_case(cylinder, cube, seg_half_edge, half_edge, max_amr_level, tri_level);
         } else {
             auto geometri_and_connectivity = getGeometry(polyhedron, re_scale);
             auto geometri = geometri_and_connectivity.first;
@@ -338,7 +349,7 @@ void read_file(char* filepath, int max_amr_level) {
     
             Cylinder cylinder(cyl_datum, frame, aligned_cylinder.b(), aligned_cylinder.r());
     
-            procede_case(cylinder, geometri, seg_half_edge, half_edge, max_amr_level);
+            procede_case(cylinder, geometri, seg_half_edge, half_edge, max_amr_level, tri_level);
         }
       
 
@@ -353,17 +364,21 @@ int main(int argc, char* argv[]) {
     bool random_coords = false;
     int seed = 0;
     re_scale = 1;
+    float tri_level = 0.1;
 
     while(1) {
-        int result = getopt_long(argc, argv, "L:f:r::H", long_options, &long_id);
+        int result = getopt_long(argc, argv, "l:L:f:r::H", long_options, &long_id);
         if (result == -1)
         {
             break;
         }
         switch (result)
         {
-        case 'L':
+        case 'l':
             amr_level = std::atoi(optarg);
+            break;
+        case 'L':
+            tri_level = std::atof(optarg);
             break;
         case 'f':
             filepath = optarg;
@@ -571,7 +586,7 @@ int main(int argc, char* argv[]) {
     
             Cylinder cylinder(cyl_datum, frame, aligned_cylinder.b(), aligned_cylinder.r());
     
-            procede_case(cylinder, cube, seg_half_edge, half_edge, amr_level);
+            procede_case(cylinder, cube, seg_half_edge, half_edge, amr_level, tri_level);
         } else {
             auto geometri_and_connectivity = getGeometry(polyhedron, re_scale);
             auto geometri = geometri_and_connectivity.first;
@@ -622,13 +637,13 @@ int main(int argc, char* argv[]) {
     
             Cylinder cylinder(cyl_datum, frame, aligned_cylinder.b(), aligned_cylinder.r());
     
-            procede_case(cylinder, geometri, seg_half_edge, half_edge, amr_level);
+            procede_case(cylinder, geometri, seg_half_edge, half_edge, amr_level, tri_level);
 
         }
 
     }
     else {
-        read_file(filepath, amr_level);
+        read_file(filepath, amr_level, tri_level);
     }
 
     return 0;
